@@ -21,3 +21,8 @@ go.work
 ### macOS ###
 # General
 .DS_Store
+
+### db ###
+db.sqlite3
+
+.envrc
