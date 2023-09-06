@@ -26,5 +26,5 @@ func (value *ChoiceFlagValue) Apply(set *flag.FlagSet, val string) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("Invalid value for %s. Valid values are: %v", value.Flag.Name, value.Flag.ValidValues)
+	return fmt.Errorf("invalid value for %s. Valid values are: %v", value.Flag.Name, value.Flag.ValidValues)
 }

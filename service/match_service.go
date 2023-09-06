@@ -1,11 +1,72 @@
 package service
 
 import (
+	"fmt"
+
 	"github.com/adarsh-a-tw/tt-backend/db"
 	"github.com/adarsh-a-tw/tt-backend/enums"
 )
 
-func (s *Service) CreateSinglesMatch(
+type matchInfo struct {
+	Id        int
+	Format    enums.MatchFormat
+	Stage     enums.MatchStage
+	Status    enums.MatchStatus
+	Opponents []struct {
+		Name     string
+		IsWinner bool
+	}
+}
+
+func (s *service) GetMatchInfoList(status string) ([]matchInfo, error) {
+	matches := []db.Match{}
+	err := s.repo.GetAllMatches(&matches, status)
+	if err != nil {
+		return nil, err
+	}
+
+	matchInfoList := make([]matchInfo, 0)
+	for _, match := range matches {
+		opponents := make([]struct {
+			Name     string
+			IsWinner bool
+		}, 2)
+		if match.Format == string(enums.Doubles) {
+			rows, err := s.repo.GetTeamInfoByMatchId(match.Id)
+			if err != nil {
+				return nil, err
+			}
+			for i, row := range rows {
+				opponents[i] = struct {
+					Name     string
+					IsWinner bool
+				}{fmt.Sprintf("%s & %s", row.PlayerA, row.PlayerB), row.IsWinner}
+			}
+		} else {
+			rows, err := s.repo.GetPlayerInfoByMatchId(match.Id)
+			if err != nil {
+				return nil, err
+			}
+			for i, row := range rows {
+				opponents[i] = struct {
+					Name     string
+					IsWinner bool
+				}{row.PlayerName, row.IsWinner}
+			}
+		}
+		matchInfoList = append(matchInfoList, matchInfo{
+			Id:        match.Id,
+			Format:    enums.MatchFormat(match.Format),
+			Stage:     enums.MatchStage(match.Stage),
+			Status:    enums.MatchStatus(match.Status),
+			Opponents: opponents,
+		})
+	}
+
+	return matchInfoList, nil
+}
+
+func (s *service) CreateSinglesMatch(
 	stage enums.MatchStage,
 	playerAId int,
 	playerBId int,
@@ -35,7 +96,7 @@ func (s *Service) CreateSinglesMatch(
 
 }
 
-func (s *Service) CreateDoublesMatch(
+func (s *service) CreateDoublesMatch(
 	stage enums.MatchStage,
 	teamAId int,
 	teamBId int,
@@ -65,7 +126,7 @@ func (s *Service) CreateDoublesMatch(
 
 }
 
-func (s *Service) createMatch(
+func (s *service) createMatch(
 	format enums.MatchFormat,
 	stage enums.MatchStage,
 	maxSets int,

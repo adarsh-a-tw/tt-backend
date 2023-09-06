@@ -5,14 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"strconv"
 
+	"github.com/adarsh-a-tw/tt-backend/api"
 	database "github.com/adarsh-a-tw/tt-backend/db"
 	"github.com/adarsh-a-tw/tt-backend/enums"
 	"github.com/adarsh-a-tw/tt-backend/service"
-	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
 	"github.com/urfave/cli"
 )
@@ -27,9 +26,6 @@ func New(db *sqlx.DB) *cli.App {
 
 	registerCommands(app, db)
 
-	// registerFlags(app)
-	// registerCliActions(app, db)
-
 	return app
 }
 
@@ -40,8 +36,7 @@ func registerCommands(app *cli.App, db *sqlx.DB) {
 			ShortName:   "s",
 			Description: "Starts the server",
 			Action: func(c *cli.Context) error {
-				runServer(db)
-				return nil
+				return runServer(db)
 			},
 		},
 		{
@@ -55,7 +50,6 @@ func registerCommands(app *cli.App, db *sqlx.DB) {
 				}
 
 				importType := c.String("import-type")
-				fmt.Println(importType)
 				if importType == "" {
 					return fmt.Errorf("import type not specified")
 				}
@@ -97,19 +91,16 @@ func registerCommands(app *cli.App, db *sqlx.DB) {
 	}
 }
 
-func runServer(db *sqlx.DB) {
+func runServer(db *sqlx.DB) error {
 	var port = 8080
 	addr := fmt.Sprintf(":%d", port)
-	r := gin.Default()
-	r.GET("/ping", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "pong",
-		})
-	})
-	r.Run(addr)
+
+	svc := service.NewService(database.NewRepository(db))
+	api := api.New(svc)
+	return api.Serve(addr)
 }
 
-func createPlayers(reader *csv.Reader, svc *service.Service) error {
+func createPlayers(reader *csv.Reader, svc service.Service) error {
 	records, err := reader.ReadAll()
 	if err != nil {
 		return err
@@ -137,7 +128,7 @@ func createPlayers(reader *csv.Reader, svc *service.Service) error {
 	return nil
 }
 
-func createTeams(reader *csv.Reader, svc *service.Service) error {
+func createTeams(reader *csv.Reader, svc service.Service) error {
 	records, err := reader.ReadAll()
 	if err != nil {
 		return err
@@ -169,7 +160,7 @@ func createTeams(reader *csv.Reader, svc *service.Service) error {
 	return nil
 }
 
-func createMatches(reader *csv.Reader, svc *service.Service) error {
+func createMatches(reader *csv.Reader, svc service.Service) error {
 	records, err := reader.ReadAll()
 	if err != nil {
 		return err

@@ -10,6 +10,9 @@ type Repository interface {
 	CreateTeam(team *Team) error
 	AddTeamToMatch(mapping *TeamMatchMapping) error
 	AddPlayerToMatch(mapping *PlayerMatchMapping) error
+	GetAllMatches(matches *[]Match, statusFilter string) error
+	GetTeamInfoByMatchId(matchId int) ([]TeamInfoByMatchIdRow, error)
+	GetPlayerInfoByMatchId(matchId int) ([]PlayerInfoByMatchIdRow, error)
 }
 
 type repository struct {
@@ -95,4 +98,85 @@ func (r *repository) AddPlayerToMatch(mapping *PlayerMatchMapping) error {
 		return err
 	}
 	return nil
+}
+
+func (r *repository) GetAllMatches(matches *[]Match, statusFilter string) error {
+	query := `SELECT * FROM match`
+
+	if statusFilter != "" {
+		query += ` WHERE status = :filter`
+	}
+
+	query += ` ORDER BY id ASC`
+
+	stmt, err := r.db.PrepareNamed(query)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	if err := stmt.Select(matches, map[string]interface{}{"filter": statusFilter}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type TeamInfoByMatchIdRow struct {
+	MatchId     int    `db:"match_id"`
+	Id          int    `db:"id"`
+	TeamId      int    `db:"team_id"`
+	PlayerA     string `db:"player_a"`
+	PlayerB     string `db:"player_b"`
+	IsOpponentA bool   `db:"is_opp_a"`
+	IsWinner    bool   `db:"is_winner"`
+}
+
+func (r *repository) GetTeamInfoByMatchId(matchId int) ([]TeamInfoByMatchIdRow, error) {
+	query := `SELECT * FROM team_match_mapping JOIN team ON team_match_mapping.team_id = team.id`
+	query += ` WHERE match_id = :matchId`
+	query += ` ORDER BY is_opp_a DESC`
+
+	stmt, err := r.db.PrepareNamed(query)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	rows := []TeamInfoByMatchIdRow{}
+
+	if err := stmt.Select(&rows, map[string]interface{}{"matchId": matchId}); err != nil {
+		return nil, err
+	}
+
+	return rows, nil
+}
+
+type PlayerInfoByMatchIdRow struct {
+	MatchId     int    `db:"match_id"`
+	Id          int    `db:"id"`
+	PlayerId    int    `db:"player_id"`
+	PlayerName  string `db:"name"`
+	IsOpponentA bool   `db:"is_opp_a"`
+	IsWinner    bool   `db:"is_winner"`
+}
+
+func (r *repository) GetPlayerInfoByMatchId(matchId int) ([]PlayerInfoByMatchIdRow, error) {
+	query := `SELECT * FROM player_match_mapping JOIN player ON player_match_mapping.player_id = player.id`
+	query += ` WHERE match_id = :matchId`
+	query += ` ORDER BY is_opp_a DESC`
+
+	stmt, err := r.db.PrepareNamed(query)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	rows := []PlayerInfoByMatchIdRow{}
+
+	if err := stmt.Select(&rows, map[string]interface{}{"matchId": matchId}); err != nil {
+		return nil, err
+	}
+
+	return rows, nil
 }

@@ -1,14 +1,14 @@
-package api
+package dto
 
-type Match struct {
-	Id        int    `json:"id"`
-	Stage     string `json:"stage"`
-	Format    string `json:"format"`
-	GamePoint int    `json:"game_point"`
-	SetCount  int    `json:"set_count"`
-	Status    string `json:"status"`
-	Sets      []Set  `json:"sets"`
-	OpponentA string `json:"opponent_A"`
+type OpponentResponse struct {
+	Name     string `json:"name"`
+	IsWinner bool   `json:"is_winner"`
 }
 
-type Set struct{}
+type MatchInfoResponse struct {
+	Id        int                `json:"id"`
+	Format    string             `json:"format"`
+	Stage     string             `json:"stage"`
+	Status    string             `json:"status"`
+	Opponents []OpponentResponse `json:"opponents"`
+}
