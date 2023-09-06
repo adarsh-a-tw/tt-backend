@@ -26,3 +26,5 @@ go.work
 db.sqlite3
 
 .envrc
+
+tt-backend

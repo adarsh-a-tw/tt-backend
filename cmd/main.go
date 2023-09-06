@@ -2,20 +2,27 @@ package main
 
 import (
 	"fmt"
-	"net/http"
+	"log"
+	"os"
 
-	"github.com/gin-gonic/gin"
+	"github.com/adarsh-a-tw/tt-backend/cli"
+	"github.com/jmoiron/sqlx"
+
+	_ "github.com/lib/pq"
 )
 
-var port = 8080
-
 func main() {
-	addr := fmt.Sprintf(":%d", port)
-	r := gin.Default()
-	r.GET("/ping", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "pong",
-		})
-	})
-	r.Run(addr)
+	db, err := sqlx.Connect("postgres", os.Getenv("DB_URL"))
+	if err != nil {
+		log.Fatalf("Cannot connect to database: %s", err.Error())
+	}
+	defer db.Close()
+
+	app := cli.New(db)
+
+	err = app.Run(os.Args)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		os.Exit(1)
+	}
 }

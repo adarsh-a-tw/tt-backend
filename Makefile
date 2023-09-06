@@ -24,8 +24,8 @@ build:
 
 # Apply up migrations
 up:
-	migrate -path $(MIGRATION_PATH) -database ${DB_DRIVER} up
+	migrate -path $(MIGRATION_PATH) -database ${DB_URL} up
 
 # Rollback down migrations
 down:
-	migrate -path $(MIGRATION_PATH) -database ${DB_DRIVER} down
+	migrate -path $(MIGRATION_PATH) -database ${DB_URL} down

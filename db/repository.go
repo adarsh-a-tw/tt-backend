@@ -27,13 +27,22 @@ func (r *repository) CreateMatch(match *Match) (int64, error) {
 		RETURNING id;
 	`
 
-	result, err := r.db.NamedExec(query, match)
+	var id int64 // Declare a variable to store the returned ID
+
+	// Use r.db.QueryRow to execute the query and return a single row
+	rows, err := r.db.NamedQuery(query, match)
+	if err != nil {
+		return 0, err
+	}
+	rows.Next()
+	err = rows.Scan(&id)
 
 	if err != nil {
 		return 0, err
 	}
 
-	return result.LastInsertId()
+	return id, nil
+
 }
 
 func (r *repository) CreatePlayer(player *Player) error {
