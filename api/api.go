@@ -37,6 +37,7 @@ func (a *Api) registerEndpoints() {
 	})
 
 	a.r.Use(adminAuthMiddleware())
+	a.r.POST("/api/matches/:match_id/sets", a.CreateSet)
 }
 
 func (a *Api) Serve(addr string) error {

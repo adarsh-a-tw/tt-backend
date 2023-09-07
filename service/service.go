@@ -10,6 +10,7 @@ type Service interface {
 	CreatePlayer(name string) error
 	CreateSinglesMatch(stage enums.MatchStage, playerAId int, playerBId int, maxSets int, gamePoint int) error
 	CreateTeam(playerAName string, playerBName string) error
+	CreateSet(matchId int) error
 	GetMatchInfoList(status string) ([]matchInfo, error)
 }
 

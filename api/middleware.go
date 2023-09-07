@@ -9,7 +9,7 @@ import (
 
 func adminAuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if c.GetHeader("X-Api-Key") != "" && c.GetHeader("X-Api-Key") != os.Getenv("ADMIN_TOKEN") {
+		if c.GetHeader("X-Api-Key") == "" || c.GetHeader("X-Api-Key") != os.Getenv("ADMIN_TOKEN") {
 			c.AbortWithStatus(http.StatusForbidden)
 			return
 		}

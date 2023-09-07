@@ -8,11 +8,15 @@ type Repository interface {
 	CreateMatch(match *Match) (int64, error)
 	CreatePlayer(player *Player) error
 	CreateTeam(team *Team) error
+	CreateSet(set *Set) (int64, error)
 	AddTeamToMatch(mapping *TeamMatchMapping) error
 	AddPlayerToMatch(mapping *PlayerMatchMapping) error
 	GetAllMatches(matches *[]Match, statusFilter string) error
+	GetMatchById(id int) (*Match, error)
+	GetSetsByMatchId(id int) ([]Set, error)
 	GetTeamInfoByMatchId(matchId int) ([]TeamInfoByMatchIdRow, error)
 	GetPlayerInfoByMatchId(matchId int) ([]PlayerInfoByMatchIdRow, error)
+	UpdateMatchStatus(matchId int, status string) error
 }
 
 type repository struct {
@@ -46,6 +50,65 @@ func (r *repository) CreateMatch(match *Match) (int64, error) {
 
 	return id, nil
 
+}
+
+func (r *repository) CreateSet(set *Set) (int64, error) {
+	query := `
+		INSERT INTO set (set_number, match_id, opp_a_score, opp_b_score, is_completed)
+		VALUES (:set_number, :match_id, :opp_a_score, :opp_b_score, :is_completed)
+		RETURNING id;
+	`
+
+	var id int64 // Declare a variable to store the returned ID
+
+	// Use r.db.QueryRow to execute the query and return a single row
+	rows, err := r.db.NamedQuery(query, set)
+	if err != nil {
+		return 0, err
+	}
+	rows.Next()
+	err = rows.Scan(&id)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return id, nil
+}
+
+func (r *repository) GetMatchById(id int) (*Match, error) {
+	query := `
+		SELECT * FROM match WHERE id = $1;
+	`
+	var match Match
+	err := r.db.Get(&match, query, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &match, nil
+}
+
+func (r *repository) GetSetsByMatchId(id int) ([]Set, error) {
+	query := `
+		SELECT * FROM set WHERE match_id = :id;
+	`
+
+	rows, err := r.db.NamedQuery(query, map[string]interface{}{"id": id})
+	if err != nil {
+		return nil, err
+	}
+	var sets []Set
+	for rows.Next() {
+		var set Set
+		err = rows.StructScan(&set)
+		if err != nil {
+			return nil, err
+		}
+		sets = append(sets, set)
+	}
+
+	return sets, nil
 }
 
 func (r *repository) CreatePlayer(player *Player) error {
@@ -179,4 +242,18 @@ func (r *repository) GetPlayerInfoByMatchId(matchId int) ([]PlayerInfoByMatchIdR
 	}
 
 	return rows, nil
+}
+
+func (r *repository) UpdateMatchStatus(matchId int, status string) error {
+	query := `UPDATE match SET status = :status WHERE id = :matchId`
+
+	stmt, err := r.db.PrepareNamed(query)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(map[string]interface{}{"matchId": matchId, "status": status})
+
+	return err
 }

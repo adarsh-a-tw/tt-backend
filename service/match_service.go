@@ -1,11 +1,15 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/adarsh-a-tw/tt-backend/db"
 	"github.com/adarsh-a-tw/tt-backend/enums"
 )
+
+var ErrGameOverOrSetCountExceeded = errors.New("game over or set count exceeded")
+var ErrPreviousSetNotCompleted = errors.New("previous set not completed")
 
 type matchInfo struct {
 	Id        int
@@ -140,4 +144,38 @@ func (s *service) createMatch(
 		Status:    string(enums.Upcoming),
 	}
 	return s.repo.CreateMatch(match)
+}
+
+func (s *service) CreateSet(matchId int) error {
+
+	match, err := s.repo.GetMatchById(matchId)
+	if err != nil {
+		return err
+	}
+	existing_sets, err := s.repo.GetSetsByMatchId(matchId)
+	if err != nil {
+		return err
+	}
+	if match.Status == string(enums.Past) || len(existing_sets) == match.SetCount {
+		return ErrGameOverOrSetCountExceeded
+	}
+
+	for _, set := range existing_sets {
+		if !set.IsCompleted {
+			return ErrPreviousSetNotCompleted
+		}
+	}
+
+	set := db.Set{
+		SetNumber: len(existing_sets) + 1,
+		MatchId:   matchId,
+	}
+
+	_, err = s.repo.CreateSet(&set)
+
+	if match.Status == string(enums.Upcoming) {
+		err = s.repo.UpdateMatchStatus(matchId, string(enums.Ongoing))
+	}
+
+	return err
 }
