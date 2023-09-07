@@ -35,6 +35,8 @@ func (a *Api) registerEndpoints() {
 			"message": "pong",
 		})
 	})
+
+	a.r.Use(adminAuthMiddleware())
 }
 
 func (a *Api) Serve(addr string) error {
