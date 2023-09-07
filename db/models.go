@@ -42,3 +42,11 @@ type PlayerMatchMapping struct {
 	IsOpponentA bool `db:"is_opp_a"`
 	IsWinner    bool `db:"is_winner"`
 }
+
+type SetLog struct {
+	Id        int  `db:"id"`
+	SetId     int  `db:"set_id"`
+	OppAScore int  `db:"opp_a_score"`
+	OppBScore int  `db:"opp_b_score"`
+	ScoredByA bool `db:"scored_by_a"`
+}

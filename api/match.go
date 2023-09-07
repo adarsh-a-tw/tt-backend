@@ -1,13 +1,9 @@
 package api
 
 import (
-	"database/sql"
-	"errors"
 	"net/http"
-	"strconv"
 
 	"github.com/adarsh-a-tw/tt-backend/api/dto"
-	"github.com/adarsh-a-tw/tt-backend/service"
 	"github.com/gin-gonic/gin"
 )
 
@@ -31,7 +27,11 @@ func (a *Api) GetMatchInfoList(ctx *gin.Context) {
 	for _, mi := range matchInfoList {
 		opponents := make([]dto.OpponentResponse, 2)
 		for i, opp := range mi.Opponents {
-			opponents[i] = dto.OpponentResponse{Name: opp.Name, IsWinner: opp.IsWinner}
+			opponents[i] = dto.OpponentResponse{
+				Id:       opp.Id,
+				Name:     opp.Name,
+				IsWinner: opp.IsWinner,
+			}
 		}
 		matchInfo = append(matchInfo, dto.MatchInfoResponse{
 			Id:        mi.Id,
@@ -45,24 +45,4 @@ func (a *Api) GetMatchInfoList(ctx *gin.Context) {
 	response := gin.H{"matches": matchInfo}
 
 	ctx.JSON(http.StatusOK, response)
-}
-
-func (a *Api) CreateSet(ctx *gin.Context) {
-	id, err := strconv.Atoi(ctx.Params.ByName("match_id"))
-	if err != nil {
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-	}
-
-	if err := a.svc.CreateSet(id); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			ctx.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": err.Error()})
-		} else if errors.Is(err, service.ErrGameOverOrSetCountExceeded) || errors.Is(err, service.ErrPreviousSetNotCompleted) {
-			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		} else {
-			ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		}
-		return
-	}
-
-	ctx.Status(http.StatusCreated)
 }

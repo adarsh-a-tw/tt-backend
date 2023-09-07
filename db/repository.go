@@ -9,14 +9,17 @@ type Repository interface {
 	CreatePlayer(player *Player) error
 	CreateTeam(team *Team) error
 	CreateSet(set *Set) (int64, error)
+	UpdateSet(set *Set) error
 	AddTeamToMatch(mapping *TeamMatchMapping) error
 	AddPlayerToMatch(mapping *PlayerMatchMapping) error
+	UpdateMatchWinner(match *Match, isOppA bool) error
 	GetAllMatches(matches *[]Match, statusFilter string) error
 	GetMatchById(id int) (*Match, error)
 	GetSetsByMatchId(id int) ([]Set, error)
 	GetTeamInfoByMatchId(matchId int) ([]TeamInfoByMatchIdRow, error)
 	GetPlayerInfoByMatchId(matchId int) ([]PlayerInfoByMatchIdRow, error)
 	UpdateMatchStatus(matchId int, status string) error
+	CreateSetLog(setLog *SetLog) error
 }
 
 type repository struct {
@@ -74,6 +77,20 @@ func (r *repository) CreateSet(set *Set) (int64, error) {
 	}
 
 	return id, nil
+}
+
+func (r *repository) UpdateSet(set *Set) error {
+	query := `
+		UPDATE set 
+		SET set_number = :set_number, match_id = :match_id,
+		opp_a_score = :opp_a_score, opp_b_score = :opp_b_score,
+		is_completed = :is_completed
+		WHERE id = :id;
+	`
+
+	_, err := r.db.NamedExec(query, set)
+
+	return err
 }
 
 func (r *repository) GetMatchById(id int) (*Match, error) {
@@ -157,6 +174,29 @@ func (r *repository) AddPlayerToMatch(mapping *PlayerMatchMapping) error {
 		VALUES (:match_id, :player_id, :is_opp_a, :is_winner)
 	`
 	_, err := r.db.NamedExec(query, mapping)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *repository) UpdateMatchWinner(match *Match, isOppA bool) error {
+	query := ``
+	if match.Format == "SINGLES" {
+		query = `
+			UPDATE player_match_mapping SET is_winner = true
+			WHERE match_id = :match_id AND is_opp_a = :is_opp_a
+		`
+	} else {
+		query = `
+			UPDATE team_match_mapping SET is_winner = true
+			WHERE match_id = :match_id AND is_opp_a = :is_opp_a
+		`
+	}
+	_, err := r.db.NamedExec(
+		query,
+		map[string]interface{}{"match_id": match.Id, "is_opp_a": isOppA},
+	)
 	if err != nil {
 		return err
 	}
@@ -254,6 +294,17 @@ func (r *repository) UpdateMatchStatus(matchId int, status string) error {
 	defer stmt.Close()
 
 	_, err = stmt.Exec(map[string]interface{}{"matchId": matchId, "status": status})
+
+	return err
+}
+
+func (r *repository) CreateSetLog(setLog *SetLog) error {
+	query := `
+		INSERT INTO set_log (set_id, opp_a_score, opp_b_score, scored_by_a)
+		VALUES (:set_id, :opp_a_score, :opp_b_score, :scored_by_a);
+	`
+
+	_, err := r.db.NamedExec(query, setLog)
 
 	return err
 }

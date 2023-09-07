@@ -12,6 +12,7 @@ type Service interface {
 	CreateTeam(playerAName string, playerBName string) error
 	CreateSet(matchId int) error
 	GetMatchInfoList(status string) ([]matchInfo, error)
+	UpdateScore(matchId int, setId int, scoredByA bool) error
 }
 
 type service struct {

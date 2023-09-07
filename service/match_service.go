@@ -1,15 +1,11 @@
 package service
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/adarsh-a-tw/tt-backend/db"
 	"github.com/adarsh-a-tw/tt-backend/enums"
 )
-
-var ErrGameOverOrSetCountExceeded = errors.New("game over or set count exceeded")
-var ErrPreviousSetNotCompleted = errors.New("previous set not completed")
 
 type matchInfo struct {
 	Id        int
@@ -17,6 +13,7 @@ type matchInfo struct {
 	Stage     enums.MatchStage
 	Status    enums.MatchStatus
 	Opponents []struct {
+		Id       int
 		Name     string
 		IsWinner bool
 	}
@@ -32,6 +29,7 @@ func (s *service) GetMatchInfoList(status string) ([]matchInfo, error) {
 	matchInfoList := make([]matchInfo, 0)
 	for _, match := range matches {
 		opponents := make([]struct {
+			Id       int
 			Name     string
 			IsWinner bool
 		}, 2)
@@ -42,9 +40,10 @@ func (s *service) GetMatchInfoList(status string) ([]matchInfo, error) {
 			}
 			for i, row := range rows {
 				opponents[i] = struct {
+					Id       int
 					Name     string
 					IsWinner bool
-				}{fmt.Sprintf("%s & %s", row.PlayerA, row.PlayerB), row.IsWinner}
+				}{row.TeamId, fmt.Sprintf("%s & %s", row.PlayerA, row.PlayerB), row.IsWinner}
 			}
 		} else {
 			rows, err := s.repo.GetPlayerInfoByMatchId(match.Id)
@@ -53,9 +52,10 @@ func (s *service) GetMatchInfoList(status string) ([]matchInfo, error) {
 			}
 			for i, row := range rows {
 				opponents[i] = struct {
+					Id       int
 					Name     string
 					IsWinner bool
-				}{row.PlayerName, row.IsWinner}
+				}{row.PlayerId, row.PlayerName, row.IsWinner}
 			}
 		}
 		matchInfoList = append(matchInfoList, matchInfo{
@@ -144,38 +144,4 @@ func (s *service) createMatch(
 		Status:    string(enums.Upcoming),
 	}
 	return s.repo.CreateMatch(match)
-}
-
-func (s *service) CreateSet(matchId int) error {
-
-	match, err := s.repo.GetMatchById(matchId)
-	if err != nil {
-		return err
-	}
-	existing_sets, err := s.repo.GetSetsByMatchId(matchId)
-	if err != nil {
-		return err
-	}
-	if match.Status == string(enums.Past) || len(existing_sets) == match.SetCount {
-		return ErrGameOverOrSetCountExceeded
-	}
-
-	for _, set := range existing_sets {
-		if !set.IsCompleted {
-			return ErrPreviousSetNotCompleted
-		}
-	}
-
-	set := db.Set{
-		SetNumber: len(existing_sets) + 1,
-		MatchId:   matchId,
-	}
-
-	_, err = s.repo.CreateSet(&set)
-
-	if match.Status == string(enums.Upcoming) {
-		err = s.repo.UpdateMatchStatus(matchId, string(enums.Ongoing))
-	}
-
-	return err
 }

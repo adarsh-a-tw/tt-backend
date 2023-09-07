@@ -1,6 +1,7 @@
 package dto
 
 type OpponentResponse struct {
+	Id       int    `json:"id"`
 	Name     string `json:"name"`
 	IsWinner bool   `json:"is_winner"`
 }
