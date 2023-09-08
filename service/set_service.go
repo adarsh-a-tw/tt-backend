@@ -12,6 +12,7 @@ var ErrGameOverOrSetCountExceeded = errors.New("game over or set count exceeded"
 var ErrPreviousSetNotCompleted = errors.New("previous set not completed")
 var ErrSetNotFound = errors.New("set not found")
 var ErrSetAlreadyCompleted = errors.New("set already completed")
+var ErrNoScoreToUndo = errors.New("no score to undo")
 
 func (s *service) CreateSet(matchId int) error {
 
@@ -45,6 +46,55 @@ func (s *service) CreateSet(matchId int) error {
 	}
 
 	return err
+}
+
+func (s *service) UndoScoreUpdate(matchId int, setId int) error {
+	match, err := s.repo.GetMatchById(matchId)
+	if err != nil {
+		return err
+	}
+	existing_sets, err := s.repo.GetSetsByMatchId(matchId)
+	if err != nil {
+		return err
+	}
+	if len(existing_sets) == 0 {
+		return ErrSetNotFound
+	}
+	latestSet := existing_sets[len(existing_sets)-1]
+	if latestSet.Id != setId {
+		return ErrSetNotFound
+	}
+	setLogs, err := s.repo.GetSetLogsBySetId(latestSet.Id)
+	if err != nil {
+		return err
+	}
+	if len(setLogs) == 0 {
+		return ErrNoScoreToUndo
+	}
+	err = s.repo.DeleteSetLog(setLogs[0].Id)
+	if err != nil {
+		return err
+	}
+	if len(setLogs) == 1 {
+		latestSet.OpponentAScore = 0
+		latestSet.OpponentBScore = 0
+	} else {
+		latestSet.OpponentAScore = setLogs[1].OppAScore
+		latestSet.OpponentBScore = setLogs[1].OppBScore
+	}
+	latestSet.IsCompleted = false
+	err = s.repo.UpdateSet(&latestSet)
+	if err != nil {
+		return err
+	}
+	if match.Status == string(enums.Past) {
+		err = s.repo.UpdateMatchStatus(match.Id, string(enums.Ongoing))
+		if err != nil {
+			return err
+		}
+		return s.repo.ResetMatchWinner(match)
+	}
+	return nil
 }
 
 func (s *service) UpdateScore(

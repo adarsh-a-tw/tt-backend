@@ -13,6 +13,7 @@ type Repository interface {
 	AddTeamToMatch(mapping *TeamMatchMapping) error
 	AddPlayerToMatch(mapping *PlayerMatchMapping) error
 	UpdateMatchWinner(match *Match, isOppA bool) error
+	ResetMatchWinner(match *Match) error
 	GetAllMatches(matches *[]Match, statusFilter string) error
 	GetMatchById(id int) (*Match, error)
 	GetSetsByMatchId(id int) ([]Set, error)
@@ -20,6 +21,8 @@ type Repository interface {
 	GetPlayerInfoByMatchId(matchId int) ([]PlayerInfoByMatchIdRow, error)
 	UpdateMatchStatus(matchId int, status string) error
 	CreateSetLog(setLog *SetLog) error
+	DeleteSetLog(id int) error
+	GetSetLogsBySetId(setId int) ([]SetLog, error)
 }
 
 type repository struct {
@@ -108,7 +111,7 @@ func (r *repository) GetMatchById(id int) (*Match, error) {
 
 func (r *repository) GetSetsByMatchId(id int) ([]Set, error) {
 	query := `
-		SELECT * FROM set WHERE match_id = :id;
+		SELECT * FROM set WHERE match_id = :id ORDER BY set_number ASC;
 	`
 
 	rows, err := r.db.NamedQuery(query, map[string]interface{}{"id": id})
@@ -181,21 +184,33 @@ func (r *repository) AddPlayerToMatch(mapping *PlayerMatchMapping) error {
 }
 
 func (r *repository) UpdateMatchWinner(match *Match, isOppA bool) error {
+	return r.writeMatchWinnerStatus(match, isOppA, true)
+}
+
+func (r *repository) ResetMatchWinner(match *Match) error {
+	err := r.writeMatchWinnerStatus(match, true, false)
+	if err != nil {
+		return err
+	}
+	return r.writeMatchWinnerStatus(match, false, false)
+}
+
+func (r *repository) writeMatchWinnerStatus(match *Match, isOppA bool, isWinner bool) error {
 	query := ``
 	if match.Format == "SINGLES" {
 		query = `
-			UPDATE player_match_mapping SET is_winner = true
+			UPDATE player_match_mapping SET is_winner = :isWinner
 			WHERE match_id = :match_id AND is_opp_a = :is_opp_a
 		`
 	} else {
 		query = `
-			UPDATE team_match_mapping SET is_winner = true
+			UPDATE team_match_mapping SET is_winner = :isWinner
 			WHERE match_id = :match_id AND is_opp_a = :is_opp_a
 		`
 	}
 	_, err := r.db.NamedExec(
 		query,
-		map[string]interface{}{"match_id": match.Id, "is_opp_a": isOppA},
+		map[string]interface{}{"match_id": match.Id, "is_opp_a": isOppA, "isWinner": isWinner},
 	)
 	if err != nil {
 		return err
@@ -307,4 +322,34 @@ func (r *repository) CreateSetLog(setLog *SetLog) error {
 	_, err := r.db.NamedExec(query, setLog)
 
 	return err
+}
+
+func (r *repository) DeleteSetLog(id int) error {
+	query := `
+		DELETE FROM set_log WHERE id = :id;
+	`
+
+	_, err := r.db.NamedExec(query, map[string]interface{}{"id": id})
+
+	return err
+}
+
+func (r *repository) GetSetLogsBySetId(setId int) ([]SetLog, error) {
+	query := `
+		SELECT * FROM set_log WHERE set_id = :setId ORDER BY id DESC LIMIT 2;
+	`
+
+	stmt, err := r.db.PrepareNamed(query)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	setLogs := []SetLog{}
+
+	if err := stmt.Select(&setLogs, map[string]interface{}{"setId": setId}); err != nil {
+		return nil, err
+	}
+
+	return setLogs, nil
 }

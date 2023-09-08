@@ -58,3 +58,25 @@ func (a *Api) UpdateScore(ctx *gin.Context) {
 
 	ctx.Status(http.StatusAccepted)
 }
+
+func (a *Api) UndoScore(ctx *gin.Context) {
+	matchId, err1 := strconv.Atoi(ctx.Params.ByName("match_id"))
+	setId, err2 := strconv.Atoi(ctx.Params.ByName("set_id"))
+	if err1 != nil || err2 != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Invalid request params"})
+		return
+	}
+
+	if err := a.svc.UndoScoreUpdate(matchId, setId); err != nil {
+		if errors.Is(err, service.ErrNoScoreToUndo) {
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		} else if errors.Is(err, service.ErrSetNotFound) {
+			ctx.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		} else {
+			ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+
+	ctx.Status(http.StatusAccepted)
+}

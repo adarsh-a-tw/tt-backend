@@ -39,6 +39,7 @@ func (a *Api) registerEndpoints() {
 	a.r.Use(adminAuthMiddleware())
 	a.r.POST("/api/matches/:match_id/sets", a.CreateSet)
 	a.r.POST("/api/matches/:match_id/sets/:set_id/score", a.UpdateScore)
+	a.r.PATCH("/api/matches/:match_id/sets/:set_id/score", a.UndoScore)
 }
 
 func (a *Api) Serve(addr string) error {
