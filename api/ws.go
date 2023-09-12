@@ -40,6 +40,13 @@ func handleClient(c *websocket.Conn, svc service.Service) {
 	notifyMatch(c, svc, resp)
 
 	for {
+		_, _, err := c.ReadMessage()
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				log.Printf("error: %v", err)
+			}
+			break
+		}
 	}
 }
 
