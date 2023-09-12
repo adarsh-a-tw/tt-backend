@@ -22,7 +22,7 @@ type Repository interface {
 	UpdateMatchStatus(matchId int, status string) error
 	CreateSetLog(setLog *SetLog) error
 	DeleteSetLog(id int) error
-	GetSetLogsBySetId(setId int) ([]SetLog, error)
+	GetSetLogsBySetId(setId int, limit *int) ([]SetLog, error)
 }
 
 type repository struct {
@@ -334,10 +334,20 @@ func (r *repository) DeleteSetLog(id int) error {
 	return err
 }
 
-func (r *repository) GetSetLogsBySetId(setId int) ([]SetLog, error) {
-	query := `
-		SELECT * FROM set_log WHERE set_id = :setId ORDER BY id DESC LIMIT 2;
-	`
+func (r *repository) GetSetLogsBySetId(setId int, limit *int) ([]SetLog, error) {
+	var query string
+	params := make(map[string]interface{}, 0)
+	params["setId"] = setId
+	if limit != nil {
+		query = `
+			SELECT * FROM set_log WHERE set_id = :setId ORDER BY id DESC LIMIT :limit;
+		`
+		params["limit"] = *limit
+	} else {
+		query = `
+			SELECT * FROM set_log WHERE set_id = :setId ORDER BY id DESC;
+		`
+	}
 
 	stmt, err := r.db.PrepareNamed(query)
 	if err != nil {
@@ -347,7 +357,7 @@ func (r *repository) GetSetLogsBySetId(setId int) ([]SetLog, error) {
 
 	setLogs := []SetLog{}
 
-	if err := stmt.Select(&setLogs, map[string]interface{}{"setId": setId}); err != nil {
+	if err := stmt.Select(&setLogs, params); err != nil {
 		return nil, err
 	}
 

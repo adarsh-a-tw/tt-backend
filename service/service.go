@@ -14,6 +14,7 @@ type Service interface {
 	GetMatchInfoList(status string) ([]matchInfo, error)
 	UpdateScore(matchId int, setId int, scoredByA bool) error
 	UndoScoreUpdate(matchId int, setId int) error
+	GetMatchDetails(matchId int) (*MatchDetail, error)
 }
 
 type service struct {

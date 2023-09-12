@@ -27,6 +27,8 @@ func (a *Api) CreateSet(ctx *gin.Context) {
 		return
 	}
 
+	go NotifySubscribers(id, a.svc)
+
 	ctx.Status(http.StatusCreated)
 }
 
@@ -56,6 +58,8 @@ func (a *Api) UpdateScore(ctx *gin.Context) {
 		return
 	}
 
+	go NotifySubscribers(matchId, a.svc)
+
 	ctx.Status(http.StatusAccepted)
 }
 
@@ -77,6 +81,8 @@ func (a *Api) UndoScore(ctx *gin.Context) {
 		}
 		return
 	}
+
+	go NotifySubscribers(matchId, a.svc)
 
 	ctx.Status(http.StatusAccepted)
 }

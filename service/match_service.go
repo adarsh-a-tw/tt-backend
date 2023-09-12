@@ -7,16 +7,18 @@ import (
 	"github.com/adarsh-a-tw/tt-backend/enums"
 )
 
+type opponent struct {
+	Id       int
+	Name     string
+	IsWinner bool
+}
+
 type matchInfo struct {
 	Id        int
 	Format    enums.MatchFormat
 	Stage     enums.MatchStage
 	Status    enums.MatchStatus
-	Opponents []struct {
-		Id       int
-		Name     string
-		IsWinner bool
-	}
+	Opponents []opponent
 }
 
 func (s *service) GetMatchInfoList(status string) ([]matchInfo, error) {
@@ -28,36 +30,11 @@ func (s *service) GetMatchInfoList(status string) ([]matchInfo, error) {
 
 	matchInfoList := make([]matchInfo, 0)
 	for _, match := range matches {
-		opponents := make([]struct {
-			Id       int
-			Name     string
-			IsWinner bool
-		}, 2)
-		if match.Format == string(enums.Doubles) {
-			rows, err := s.repo.GetTeamInfoByMatchId(match.Id)
-			if err != nil {
-				return nil, err
-			}
-			for i, row := range rows {
-				opponents[i] = struct {
-					Id       int
-					Name     string
-					IsWinner bool
-				}{row.TeamId, fmt.Sprintf("%s & %s", row.PlayerA, row.PlayerB), row.IsWinner}
-			}
-		} else {
-			rows, err := s.repo.GetPlayerInfoByMatchId(match.Id)
-			if err != nil {
-				return nil, err
-			}
-			for i, row := range rows {
-				opponents[i] = struct {
-					Id       int
-					Name     string
-					IsWinner bool
-				}{row.PlayerId, row.PlayerName, row.IsWinner}
-			}
+		opponents, err := s.opponentsFromMatch(match)
+		if err != nil {
+			return nil, err
 		}
+
 		matchInfoList = append(matchInfoList, matchInfo{
 			Id:        match.Id,
 			Format:    enums.MatchFormat(match.Format),
@@ -68,6 +45,28 @@ func (s *service) GetMatchInfoList(status string) ([]matchInfo, error) {
 	}
 
 	return matchInfoList, nil
+}
+
+func (s *service) opponentsFromMatch(match db.Match) ([]opponent, error) {
+	opponents := make([]opponent, 2)
+	if match.Format == string(enums.Doubles) {
+		rows, err := s.repo.GetTeamInfoByMatchId(match.Id)
+		if err != nil {
+			return nil, err
+		}
+		for i, row := range rows {
+			opponents[i] = opponent{row.TeamId, fmt.Sprintf("%s & %s", row.PlayerA, row.PlayerB), row.IsWinner}
+		}
+	} else {
+		rows, err := s.repo.GetPlayerInfoByMatchId(match.Id)
+		if err != nil {
+			return nil, err
+		}
+		for i, row := range rows {
+			opponents[i] = opponent{row.PlayerId, row.PlayerName, row.IsWinner}
+		}
+	}
+	return opponents, nil
 }
 
 func (s *service) CreateSinglesMatch(
@@ -144,4 +143,82 @@ func (s *service) createMatch(
 		Status:    string(enums.Upcoming),
 	}
 	return s.repo.CreateMatch(match)
+}
+
+type set struct {
+	Id             int
+	SetNumber      int
+	OpponentAScore int
+	OpponentBScore int
+	IsCompleted    bool
+	Logs           []setLog
+}
+
+type setLog struct {
+	Id        int
+	OppAScore int
+	OppBScore int
+	ScoredByA bool
+}
+
+type MatchDetail struct {
+	Id        int
+	Format    string
+	Stage     string
+	Status    string
+	Opponents []opponent
+	Sets      []set
+}
+
+func (svc *service) GetMatchDetails(matchId int) (*MatchDetail, error) {
+	match, err := svc.repo.GetMatchById(matchId)
+	if err != nil {
+		return nil, err
+	}
+
+	opponents, err := svc.opponentsFromMatch(*match)
+	if err != nil {
+		return nil, err
+	}
+
+	setsFromDb, err := svc.repo.GetSetsByMatchId(matchId)
+	if err != nil {
+		return nil, err
+	}
+
+	sets := make([]set, 0)
+	for _, s := range setsFromDb {
+		setLogsFromDb, err := svc.repo.GetSetLogsBySetId(s.Id, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		setLogs := make([]setLog, 0)
+		for _, sl := range setLogsFromDb {
+			setLogs = append(setLogs, setLog{
+				Id:        sl.Id,
+				OppAScore: sl.OppAScore,
+				OppBScore: sl.OppBScore,
+				ScoredByA: sl.ScoredByA,
+			})
+		}
+
+		sets = append(sets, set{
+			Id:             s.Id,
+			SetNumber:      s.SetNumber,
+			OpponentAScore: s.OpponentAScore,
+			OpponentBScore: s.OpponentBScore,
+			IsCompleted:    s.IsCompleted,
+			Logs:           setLogs,
+		})
+	}
+
+	return &MatchDetail{
+		Id:        matchId,
+		Format:    match.Format,
+		Stage:     match.Stage,
+		Status:    match.Status,
+		Opponents: opponents,
+		Sets:      sets,
+	}, nil
 }

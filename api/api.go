@@ -23,17 +23,20 @@ func New(svc service.Service) *Api {
 
 func (a *Api) registerMiddlewares() {
 	a.r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000"},
+		AllowOrigins:     []string{"http://localhost:3000", "*"},
 		AllowCredentials: true,
 	}))
 }
 
 func (a *Api) registerEndpoints() {
-	a.r.GET("/api/matches", a.GetMatchInfoList)
 	a.r.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "pong",
 		})
+	})
+	a.r.GET("/api/matches", a.GetMatchInfoList)
+	a.r.GET("/ws", func(ctx *gin.Context) {
+		serveWs(ctx.Writer, ctx.Request, a.svc)
 	})
 
 	a.r.Use(adminAuthMiddleware())

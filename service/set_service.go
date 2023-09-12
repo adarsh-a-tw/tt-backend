@@ -64,7 +64,8 @@ func (s *service) UndoScoreUpdate(matchId int, setId int) error {
 	if latestSet.Id != setId {
 		return ErrSetNotFound
 	}
-	setLogs, err := s.repo.GetSetLogsBySetId(latestSet.Id)
+	limit := 2
+	setLogs, err := s.repo.GetSetLogsBySetId(latestSet.Id, &limit)
 	if err != nil {
 		return err
 	}
