@@ -10,4 +10,4 @@ FROM scratch
 WORKDIR /app
 COPY --from=build-env /go/src/app/app .
 EXPOSE 8080
-ENTRYPOINT [ "./app serve" ]
+ENTRYPOINT [ "./app", "serve" ]
