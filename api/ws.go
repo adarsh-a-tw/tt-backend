@@ -15,6 +15,7 @@ var clients = make(map[*websocket.Conn]*int)
 func handleClient(c *websocket.Conn, svc service.Service) {
 	defer func() {
 		delete(clients, c)
+		log.Println("Closing Websocket")
 		c.Close()
 	}()
 	clients[c] = nil
@@ -95,6 +96,7 @@ func NewMatchDetailsResponse(md *service.MatchDetail) dto.MatchDetailResponse {
 }
 
 func notifyMatch(c *websocket.Conn, svc service.Service, resp dto.MatchDetailResponse) {
+	log.Printf("Notifying client for match id: %d\n", resp.Data.Id)
 	wr, err := c.NextWriter(websocket.TextMessage)
 	defer func() {
 		_ = wr.Close()
