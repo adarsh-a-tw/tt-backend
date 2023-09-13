@@ -25,6 +25,8 @@ func (a *Api) registerMiddlewares() {
 	a.r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:3000", "*"},
 		AllowCredentials: true,
+		AllowHeaders:     []string{"*"},
+		AllowWebSockets:  true,
 	}))
 }
 
