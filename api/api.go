@@ -22,12 +22,11 @@ func New(svc service.Service) *Api {
 }
 
 func (a *Api) registerMiddlewares() {
-	a.r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000", "*"},
-		AllowCredentials: true,
-		AllowHeaders:     []string{"*"},
-		AllowWebSockets:  true,
-	}))
+	defaultCfg := cors.DefaultConfig()
+	defaultCfg.AllowAllOrigins = true
+	defaultCfg.AllowWebSockets = true
+	defaultCfg.AllowHeaders = []string{"*"}
+	a.r.Use(cors.New(defaultCfg))
 }
 
 func (a *Api) registerEndpoints() {
