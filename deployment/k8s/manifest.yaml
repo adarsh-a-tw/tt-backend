@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tt-backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: tt-backend
+  template:
+    metadata:
+      labels:
+        app: tt-backend
+    spec:
+      containers:
+      - image: adarshtw/tt_backend:$BUILD_NUMBER
+        imagePullPolicy: "Always"
+        name: tt-backend
+        envFrom:
+        - secretRef:
+            name: tt-backend-secret
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: tt-backend
+  name: tt-backend
+spec:
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+  selector:
+    app: tt-backend
