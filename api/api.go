@@ -6,16 +6,19 @@ import (
 	"github.com/adarsh-a-tw/tt-backend/service"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 )
 
 type Api struct {
 	svc service.Service
 	r   *gin.Engine
+	rdb *redis.Client
 }
 
-func New(svc service.Service) *Api {
+func New(svc service.Service, rdb *redis.Client) *Api {
 	r := gin.Default()
-	api := &Api{svc, r}
+	api := &Api{svc, r, rdb}
+	go SubscribeToMatchChanges(rdb, svc)
 	api.registerMiddlewares()
 	api.registerEndpoints()
 	return api

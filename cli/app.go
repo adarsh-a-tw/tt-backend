@@ -13,30 +13,31 @@ import (
 	"github.com/adarsh-a-tw/tt-backend/enums"
 	"github.com/adarsh-a-tw/tt-backend/service"
 	"github.com/jmoiron/sqlx"
+	"github.com/redis/go-redis/v9"
 	"github.com/urfave/cli"
 )
 
 var importChoices = []string{"player", "team", "match"}
 
-func New(db *sqlx.DB) *cli.App {
+func New(db *sqlx.DB, rdb *redis.Client) *cli.App {
 	app := cli.NewApp()
 	app.Name = "TT Backend"
 	app.Usage = "Cli to run import fixture commands or run the backend server"
 	app.Version = "1.0.0"
 
-	registerCommands(app, db)
+	registerCommands(app, db, rdb)
 
 	return app
 }
 
-func registerCommands(app *cli.App, db *sqlx.DB) {
+func registerCommands(app *cli.App, db *sqlx.DB, rdb *redis.Client) {
 	app.Commands = []cli.Command{
 		{
 			Name:        "serve",
 			ShortName:   "s",
 			Description: "Starts the server",
 			Action: func(c *cli.Context) error {
-				return runServer(db)
+				return runServer(db, rdb)
 			},
 		},
 		{
@@ -91,12 +92,12 @@ func registerCommands(app *cli.App, db *sqlx.DB) {
 	}
 }
 
-func runServer(db *sqlx.DB) error {
+func runServer(db *sqlx.DB, rdb *redis.Client) error {
 	var port = 8080
 	addr := fmt.Sprintf(":%d", port)
 
 	svc := service.NewService(database.NewRepository(db))
-	api := api.New(svc)
+	api := api.New(svc, rdb)
 	return api.Serve(addr)
 }
 

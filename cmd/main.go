@@ -7,6 +7,7 @@ import (
 
 	"github.com/adarsh-a-tw/tt-backend/cli"
 	"github.com/jmoiron/sqlx"
+	"github.com/redis/go-redis/v9"
 
 	_ "github.com/lib/pq"
 )
@@ -18,7 +19,14 @@ func main() {
 	}
 	defer db.Close()
 
-	app := cli.New(db)
+	opt, err := redis.ParseURL(os.Getenv("REDIS_URL"))
+	if err != nil {
+		panic(err)
+	}
+
+	rdb := redis.NewClient(opt)
+
+	app := cli.New(db, rdb)
 
 	err = app.Run(os.Args)
 	if err != nil {
